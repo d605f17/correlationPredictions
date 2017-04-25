@@ -116,9 +116,10 @@ ratingsFromKNN <- function(user, k, item) {
   consideredUsers <- 0
   
   for(v in users){
-    if(!is.na(ratingsMatrix[v, item]) &
-       v != user & 
-       !is.na(simUsersMatrix[user, v])) {
+    rating <- ratingsMatrix[v, item]
+    similarity <- simUsersMatrix[user, v]
+    if(!is.na(rating) & v != user & 
+       !is.na(similarity) & similarity != 0) {
       top <- top + (simUsersMatrix[user, v] * (ratingsMatrix[v, item] - mean(ratingsMatrix[v, ], na.rm = TRUE)))
       bottom <- bottom + (abs(simUsersMatrix[user, v]))
       consideredUsers <- consideredUsers + 1
@@ -167,9 +168,10 @@ RMSE <- function(predictions, testData){
   
   for(row in 1:nrow(testData)){
     prediction <- predictions[as.numeric(testData[row, 1]), as.numeric(testData[row, 2])]
-    if(!is.nan(prediction))
-      squaredError <- squaredError + (as.numeric(testData[row, 3]) - prediction)^2
+    
+    squaredError <- squaredError + (as.numeric(testData[row, 3]) - prediction)^2
   }
+  
   return(sqrt(1/nrow(testData) * squaredError))
 }
 
@@ -179,8 +181,7 @@ MAE <- function(predictions, testData){
   for(row in 1:nrow(testData)){
     prediction <- predictions[as.numeric(testData[row, 1]), as.numeric(testData[row, 2])]
     
-    if(!is.nan(prediction))
-      absError <- absError + abs(as.numeric(testData[row, 3]) - prediction)
+    absError <- absError + abs(as.numeric(testData[row, 3]) - prediction)
   }
   
   return(1/nrow(testData) * absError)
