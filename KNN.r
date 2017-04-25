@@ -109,14 +109,26 @@ getKNN <- function(k, similarityVector) {
 }
 
 ratingsFromKNN <- function(user, k, item) {
-  knnUsers <- getKNN(k+1, simUsersMatrix[user, ])
+  users <- order(simUsersMatrix[user, ], decreasing = TRUE)
   
   top <- 0
   bottom <- 0
-  for(u in knnUsers[2:length(knnUsers)]){
-    top <- top + (simUsersMatrix[user, u] * (ratingsMatrix[user, item] - mean(ratingsMatrix[user, ], na.rm = TRUE)))
-    bottom <- bottom + (abs(simUsersMatrix[user, u]))
+  consideredUsers <- 0
+  
+  for(v in users){
+    if(!is.na(ratingsMatrix[v, item]) &
+       v != user & 
+       !is.na(simUsersMatrix[user, v])) {
+      top <- top + (simUsersMatrix[user, v] * (ratingsMatrix[v, item] - mean(ratingsMatrix[v, ], na.rm = TRUE)))
+      bottom <- bottom + (abs(simUsersMatrix[user, v]))
+      consideredUsers <- consideredUsers + 1
+    }
+    if(consideredUsers >= k)
+      break
   }
+  
+  if(consideredUsers == 0)
+    return(0)
   
   return(top / bottom)
 }
@@ -126,9 +138,9 @@ performUserBasedKNN <- function(ratingsMatrix, k) {
   
   for(u in 1:nrow(ratingsMatrix)){
     print(u)
+    userMean <- mean(ratingsMatrix[u, ], na.rm = TRUE)
+    
     for(i in 1:ncol(ratingsMatrix)){
-      userMean <- mean(ratingsMatrix[u, ], na.rm = TRUE)
-      
       predictions[u, i] <- userMean + ratingsFromKNN(u, k, i)
     }
   }
@@ -136,6 +148,43 @@ performUserBasedKNN <- function(ratingsMatrix, k) {
   return(predictions)
 }
 
+makeTestdata <- function(filename){
+  testdata <- read_delim(paste(getwd(), "/ml-100k/", filename, ".test", sep = ""),
+                          "\t", escape_double = FALSE, trim_ws = TRUE, 
+                          col_names = c("userId", "movieId", "rating", "timestamp"),
+                          col_types = cols(
+                            userId = col_integer(),
+                            movieId = col_integer(),
+                            rating = col_integer(),
+                            timestamp = col_integer()
+                          )
+  );
+  return(as.matrix(testdata))
+}
+
+RMSE <- function(predictions, testData){
+  squaredError <- 0
+  
+  for(row in 1:nrow(testData)){
+    prediction <- predictions[as.numeric(testData[row, 1]), as.numeric(testData[row, 2])]
+    if(!is.nan(prediction))
+      squaredError <- squaredError + (as.numeric(testData[row, 3]) - prediction)^2
+  }
+  return(sqrt(1/nrow(testData) * squaredError))
+}
+
+MAE <- function(predictions, testData){
+  absError <- 0
+  
+  for(row in 1:nrow(testData)){
+    prediction <- predictions[as.numeric(testData[row, 1]), as.numeric(testData[row, 2])]
+    
+    if(!is.nan(prediction))
+      absError <- absError + abs(as.numeric(testData[row, 3]) - prediction)
+  }
+  
+  return(1/nrow(testData) * absError)
+}
 
 
 
