@@ -192,46 +192,48 @@ MAE <- function(predictions, testData){
 precision <- function(predictions, testData, threshhold){
   numberOfUsers <- nrow(predictions)
   
-  accumulatedPrecision <- 0
-  for(u in 1:numberOfUsers){
-    print(u)
-    
-    known <- testData[which(testData[, 1] == u), 2]
-    knownPositives <- testData[which(testData[, 1] == u & 
-                                   testData[, 3] >= threshhold), 2]
-    positives <- intersect(known, 
-                           which(predictions[u, ] >= threshhold))
-    truePositives <- intersect(positives, knownPositives)
-    
-    tmpResult <- length(truePositives) / length(positives)
-    
-    if(length(positives) != 0){
-      accumulatedPrecision <- accumulatedPrecision + tmpResult
-    }                                  
-  }
+  tp <- 0
+  fp <- 0
   
-  return(1/numberOfUsers * accumulatedPrecision)
+  for(u in 1:numberOfUsers){
+    known <- testData[which(testData[, 1] == u), ]
+    
+    for(k in 1:10){
+      prediction <- predictions[u, known[k, 2]]
+      actualRating <- known[k, 3]
+      
+      if(prediction >= threshhold & actualRating >= threshhold) #Recommended & Used
+        tp <- tp + 1
+      if(prediction >= threshhold & actualRating < threshhold) #Recommended & Unused
+        fp <- fp + 1
+    }
+  }
+  return(tp/(tp + fp))
 }
 
 recall <- function(predictions, testData, threshhold){
   numberOfUsers <- nrow(predictions)
   
-  accumulatedRecall <- 0
+  tp <- 0
+  fn <- 0
+  
   for(u in 1:numberOfUsers){
-    print(u)
+    known <- testData[which(testData[, 1] == u), ]
     
-    known <- testData[which(testData[, 1] == u), 2]
-    knownPositives <- testData[which(testData[, 1] == u & 
-                                      testData[, 3] >= threshhold), 2]
-    positives <- intersect(known, 
-                           which(predictions[u, ] >= threshhold))
-    truePositives <- intersect(positives, knownPositives)
-    
-    if(length(knownPositives) != 0){
-      accumulatedRecall <- accumulatedRecall + 
-        length(truePositives) / length(knownPositives)
+    for(k in 1:10){
+      prediction <- predictions[u, known[k, 2]]
+      actualRating <- known[k, 3]
+      
+      if(prediction >= threshhold & actualRating >= threshhold) #Recommended & Used
+        tp <- tp + 1
+      if(prediction < threshhold & actualRating >= threshhold) #Not recommended & Used
+        fn <- fn + 1
     }
   }
-  
-  return(1/numberOfUsers * accumulatedRecall)
+  return(tp/(tp + fn))
 }
+
+fmeasure <- function(precision, recall){
+  return((2*precision*recall)/(precision + recall))
+}
+
